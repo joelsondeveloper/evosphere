@@ -1,6 +1,7 @@
 import { Creature } from "../creature/creature";
 import { Food } from "../food/food";
 
+
 export class Renderer {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;

@@ -14,18 +14,27 @@ export class Brain {
     biasTurn: number,
     biasEat: number,
   ) {
-    this.weightsMove = weightsMove;
-    this.weightsTurn = weightsTurn;
-    this.weightsEat = weightsEat;
+    this.weightsMove = [...weightsMove];
+    this.weightsTurn = [...weightsTurn];
+    this.weightsEat = [...weightsEat];
     this.biasMove = biasMove;
     this.biasTurn = biasTurn;
     this.biasEat = biasEat;
   }
 
   neuron(inputs: number[], weights: number[], bias: number) {
+    if (inputs.length !== weights.length) {
+      throw new RangeError("Brain input and weight counts must match");
+    }
+    if (!Number.isFinite(bias) || !inputs.every(Number.isFinite) || !weights.every(Number.isFinite)) {
+      throw new RangeError("Brain inputs, weights and bias must be finite");
+    }
     let sum = 0;
     for (let i = 0; i < inputs.length; i++) {
       sum += inputs[i] * weights[i];
+    }
+    if (Number.isNaN(sum)) {
+      throw new RangeError("Neuron sum is NaN");
     }
     return Math.tanh(sum + bias);
   }

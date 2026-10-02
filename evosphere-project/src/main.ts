@@ -52,7 +52,7 @@ const creature3 = new Creature(
 );
 
 const creatures: Creature[] = [creature1, creature2, creature3];
-const simulation = new Simulation(creatures);
+const simulation = new Simulation({ width: 600, height: 600 }, creatures);
 const renderer = new Renderer();
 const loop = new Loop(simulation, renderer);
 
