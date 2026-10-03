@@ -4,3 +4,5 @@ export interface Positionable {
 }
 
 export type WorldSize = { width: number; height: number };
+
+export type Random = { next: () => number };

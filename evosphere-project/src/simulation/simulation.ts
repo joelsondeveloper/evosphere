@@ -2,10 +2,12 @@ import { Creature } from "../creature/creature";
 import { Food } from "../food/food";
 import { getFoodSensors } from "../sensors/sensors";
 import { findNearest, distanceBetween, normalizeAngle } from "../utils/math";
+import { Random } from "../utils/random";
 import type { WorldSize } from "../utils/types";
 
 export class Simulation {
   worldSize: WorldSize;
+  random: Random;
   creatures: Creature[] = [];
   food: Food[] = [];
   foodSpawnTimer: number = 0;
@@ -14,10 +16,16 @@ export class Simulation {
 
   constructor(
     worldSize: WorldSize,
+    random: Random,
     creatures: Creature[] = [],
     foodSpawnChance?: number,
   ) {
-    this.worldSize = worldSize ;
+    if (!Number.isFinite(worldSize.width) || worldSize.width <= 0 ||
+        !Number.isFinite(worldSize.height) || worldSize.height <= 0) {
+      throw new RangeError("World dimensions must be finite and positive");
+    }
+    this.worldSize = worldSize;
+    this.random = random;
     this.creatures = [...creatures];
     this.foodSpawnChance = foodSpawnChance ?? 0.3;
   }
@@ -99,11 +107,12 @@ export class Simulation {
     this.foodSpawnTimer =
       nextSpawnTimer - spawnAttempts * this.foodSpawnInterval;
     for (let attempt = 0; attempt < spawnAttempts; attempt++) {
-      if (Math.random() < this.foodSpawnChance) {
+      if (
+        this.random.next() < this.foodSpawnChance) {
         this.food.push(
           new Food(
-            Math.random() * this.worldSize.width,
-            Math.random() * this.worldSize.height,
+            this.random.next() * this.worldSize.width,
+            this.random.next() * this.worldSize.height,
           ),
         );
       }

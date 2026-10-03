@@ -1,15 +1,16 @@
 import { Creature } from "../creature/creature";
 import { Food } from "../food/food";
+import type { WorldSize } from "../utils/types";
 
 
 export class Renderer {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
 
-  constructor() {
+  constructor(worldSize: WorldSize) {
     this.canvas = document.createElement("canvas");
-    this.canvas.width = 600;
-    this.canvas.height = 600;
+    this.canvas.width = worldSize.width;
+    this.canvas.height = worldSize.height;
     this.canvas.id = "canvas";
     this.canvas.style.border = "1px solid black";
     const context = this.canvas.getContext("2d");
@@ -20,7 +21,7 @@ export class Renderer {
   }
 
   draw(creatures: Creature[], foods: Food[] = []) {
-    this.ctx.clearRect(0, 0, 600, 600);
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     for (const creature of creatures) {
       this.ctx.fillRect(creature.x, creature.y, 20, 20);
     }

@@ -1,4 +1,4 @@
-import type { Positionable, WorldSize } from "./types";
+import type { Positionable, WorldSize, Random } from "./types";
 export function distanceBetween(
   x1: number,
   y1: number,
@@ -6,8 +6,8 @@ export function distanceBetween(
   y2: number,
   worldSize: WorldSize
 ) {
-  const dx = Math.abs(x2 - x1);
-  const dy = Math.abs(y2 - y1);
+  const dx = Math.abs((x2 - x1) % worldSize.width);
+  const dy = Math.abs((y2 - y1) % worldSize.height);
   const distanceX = Math.min(dx, worldSize.width - dx);
   const distanceY = Math.min(dy, worldSize.height - dy);
   return Math.hypot(distanceX, distanceY);
@@ -15,8 +15,8 @@ export function distanceBetween(
 }
 
 export function angleBetween(x1: number, y1: number, x2: number, y2: number, worldSize: WorldSize) {
-  let dx = x2 - x1;
-  let dy = y2 - y1;
+  let dx = (x2 - x1) % worldSize.width;
+  let dy = (y2 - y1) % worldSize.height;
   if (dx > worldSize.width / 2) {
     dx -= worldSize.width;
   } else if (dx < -worldSize.width / 2) {
@@ -28,7 +28,8 @@ export function angleBetween(x1: number, y1: number, x2: number, y2: number, wor
   } else if (dy < -worldSize.height / 2) {
     dy += worldSize.height;
   }
-  return Math.atan2(dy, dx) * 180 / Math.PI;
+  // Remainders can be -0 for equivalent coordinates on different copies of the world.
+  return radiansToDegrees(Math.atan2(dy === 0 ? 0 : dy, dx === 0 ? 0 : dx));
 }
 
 export function normalizeAngle(angle: number) {
@@ -72,17 +73,17 @@ export function radiansToDegrees(radians: number) {
   return (radians * 180) / Math.PI;
 }
 
-export function randomWeights(count: number) {
+export function randomWeights(count: number, random: Random) {
   if (!Number.isSafeInteger(count) || count < 0) {
     throw new RangeError("Weight count must be a non-negative safe integer");
   }
   const weights: number[] = [];
   for (let i = 0; i < count; i++) {
-    weights.push(randomWeight());
+    weights.push(randomWeight(random));
   }
   return weights;
 }
 
-export function randomWeight() {
-  return Math.random() * 2 - 1;
+export function randomWeight(random: Random) {
+  return random.next() * 2 - 1;
 }
