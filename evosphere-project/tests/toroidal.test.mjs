@@ -18,7 +18,7 @@ const close = (actual, expected, tolerance = 1e-9) => {
     `expected ${actual} to be within ${tolerance} of ${expected}`);
 };
 const makeCreature = (x, y, direction = 0, speed = 0, eat = 0) =>
-  new Creature(x, y, new Brain([0,0,0,0], [0,0,0,0], [0,0,0,0], 0, 0, eat),
+  new Creature(x, y, new Brain([0,0,0,0,0,0,0], [0,0,0,0,0,0,0], [0,0,0,0,0,0,0], [0,0,0,0,0,0,0], 0, 0, eat, 0),
     speed, 0, direction, 20, 100, 50, 1);
 
 for (const [name, from, to, expected, size = world] of [
@@ -80,7 +80,7 @@ for (const [name, x, y, fx, fy, angle] of [
     const c = makeCreature(x,y); const food = new Food(fx,fy);
     const inputs = getFoodSensors(c, [food], world);
     close(inputs[0], angle); close(inputs[1], Math.hypot(fx === x ? 0 : 10, fy === y ? 0 : 10) / 20);
-    assert.deepEqual(inputs.slice(2), [1,0.5]);
+    assert.deepEqual(inputs.slice(2), [1]);
   });
 }
 
@@ -88,7 +88,7 @@ test("vision includes exactly its radius across the seam and excludes beyond it"
   const c = makeCreature(595,300); c.visionRange = 10;
   const edge = new Food(5,300); const outside = new Food(5.01,300);
   assert.deepEqual(getVisible(c, 10, [edge,outside], world), [edge]);
-  assert.deepEqual(getFoodSensors(c, [outside], world), [0,1,0,0.5]);
+  assert.deepEqual(getFoodSensors(c, [outside], world), [0,1,0]);
 });
 
 test("sensors select the closest visible food across the seam", () => {

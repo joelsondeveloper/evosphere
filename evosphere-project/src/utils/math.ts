@@ -4,17 +4,22 @@ export function distanceBetween(
   y1: number,
   x2: number,
   y2: number,
-  worldSize: WorldSize
+  worldSize: WorldSize,
 ) {
   const dx = Math.abs((x2 - x1) % worldSize.width);
   const dy = Math.abs((y2 - y1) % worldSize.height);
   const distanceX = Math.min(dx, worldSize.width - dx);
   const distanceY = Math.min(dy, worldSize.height - dy);
   return Math.hypot(distanceX, distanceY);
-
 }
 
-export function angleBetween(x1: number, y1: number, x2: number, y2: number, worldSize: WorldSize) {
+export function angleBetween(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  worldSize: WorldSize,
+) {
   let dx = (x2 - x1) % worldSize.width;
   let dy = (y2 - y1) % worldSize.height;
   if (dx > worldSize.width / 2) {
@@ -42,7 +47,12 @@ export function normalizeAngle(angle: number) {
   return angle;
 }
 
-export function relativeAngle(angle1: number, pos1: Positionable, pos2: Positionable, worldSize: WorldSize) {
+export function relativeAngle(
+  angle1: number,
+  pos1: Positionable,
+  pos2: Positionable,
+  worldSize: WorldSize,
+) {
   const angle2 = angleBetween(pos1.x, pos1.y, pos2.x, pos2.y, worldSize);
   return normalizeAngle(angle2 - angle1);
 }
@@ -50,17 +60,21 @@ export function relativeAngle(angle1: number, pos1: Positionable, pos2: Position
 export function findNearest<T extends Positionable>(
   position: Positionable,
   candidates: T[],
-  worldSize: WorldSize
+  worldSize: WorldSize,
+  ignore?: Positionable,
 ): T | null {
   let nearest: T | null = null;
   let nearestDistance: number = Infinity;
   for (const candidate of candidates) {
+    if (candidate === ignore) {
+      continue;
+    }
     const distance = distanceBetween(
       position.x,
       position.y,
       candidate.x,
       candidate.y,
-      worldSize
+      worldSize,
     );
     if (distance < nearestDistance) {
       nearest = candidate;

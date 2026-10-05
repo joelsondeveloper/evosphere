@@ -1,6 +1,6 @@
 import { Creature } from "../creature/creature";
 import { Food } from "../food/food";
-import { getFoodSensors } from "../sensors/sensors";
+import { getFoodSensors, getCreatureSensors } from "../sensors/sensors";
 import { findNearest, distanceBetween, normalizeAngle } from "../utils/math";
 import { Random } from "../utils/random";
 import type { WorldSize } from "../utils/types";
@@ -20,8 +20,12 @@ export class Simulation {
     creatures: Creature[] = [],
     foodSpawnChance?: number,
   ) {
-    if (!Number.isFinite(worldSize.width) || worldSize.width <= 0 ||
-        !Number.isFinite(worldSize.height) || worldSize.height <= 0) {
+    if (
+      !Number.isFinite(worldSize.width) ||
+      worldSize.width <= 0 ||
+      !Number.isFinite(worldSize.height) ||
+      worldSize.height <= 0
+    ) {
       throw new RangeError("World dimensions must be finite and positive");
     }
     this.worldSize = worldSize;
@@ -61,11 +65,22 @@ export class Simulation {
     if (delta === 0) return;
 
     const eatingRange = 15;
+
+    const reproductionRange = 20;
+
+    const reproductionCandidates: Creature[] = [];
+    const newborns: Creature[] = [];
+
     for (const creature of this.creatures) {
       if (creature.energy <= 0) continue;
-      const { move, turn, eat } = creature.brain.think(
-        getFoodSensors(creature, this.food, this.worldSize),
-      );
+      const energyInput =
+        creature.maxEnergy > 0 ? creature.energy / creature.maxEnergy : 0;
+      const inputsArr = [
+        ...getFoodSensors(creature, this.food, this.worldSize),
+        energyInput,
+        ...getCreatureSensors(creature, this.creatures, this.worldSize),
+      ];
+      const { move, turn, eat, reproduce } = creature.brain.think(inputsArr);
       creature.move = move;
       creature.turn = turn;
       creature.direction = normalizeAngle(
@@ -75,9 +90,11 @@ export class Simulation {
       creature.x += delta * creature.speed * Math.cos(radians) * creature.move;
       creature.y += delta * creature.speed * Math.sin(radians) * creature.move;
       creature.x =
-        ((creature.x % this.worldSize.width) + this.worldSize.width) % this.worldSize.width;
+        ((creature.x % this.worldSize.width) + this.worldSize.width) %
+        this.worldSize.width;
       creature.y =
-        ((creature.y % this.worldSize.height) + this.worldSize.height) % this.worldSize.height;
+        ((creature.y % this.worldSize.height) + this.worldSize.height) %
+        this.worldSize.height;
 
       if (eat > 0.5) {
         const foodNearest = findNearest(creature, this.food, this.worldSize);
@@ -99,16 +116,58 @@ export class Simulation {
         }
       }
 
+      if (reproduce > 0.5) {
+        reproductionCandidates.push(creature);
+      }
+
       const movementCost = 2;
       creature.energy -=
         (creature.metabolism + creature.move * movementCost) * delta;
     }
 
+    const paired = new Set<Creature>();
+    const hasReproductionEnergy = (creature: Creature) =>
+      Number.isFinite(creature.maxEnergy) && creature.maxEnergy > 0 &&
+      Number.isFinite(creature.energy) && creature.energy >= creature.maxEnergy / 2;
+
+    for (const creature of reproductionCandidates) {
+      if (paired.has(creature) || !hasReproductionEnergy(creature)) continue;
+      const availablePartners = reproductionCandidates.filter(
+        (partner) => !paired.has(partner) && hasReproductionEnergy(partner),
+      );
+      const partner = findNearest(
+        creature,
+        availablePartners,
+        this.worldSize,
+        creature,
+      );
+
+      if (
+        partner &&
+        distanceBetween(
+          creature.x,
+          creature.y,
+          partner.x,
+          partner.y,
+          this.worldSize,
+        ) < reproductionRange &&
+        hasReproductionEnergy(creature) &&
+        hasReproductionEnergy(partner)
+      ) {
+        // Only charge parents once a valid child has been created.
+        const child = creature.reproduce(partner, this.random);
+        creature.energy -= creature.maxEnergy / 4;
+        partner.energy -= partner.maxEnergy / 4;
+        paired.add(creature);
+        paired.add(partner);
+        newborns.push(child);
+      }
+    }
+
     this.foodSpawnTimer =
       nextSpawnTimer - spawnAttempts * this.foodSpawnInterval;
     for (let attempt = 0; attempt < spawnAttempts; attempt++) {
-      if (
-        this.random.next() < this.foodSpawnChance) {
+      if (this.random.next() < this.foodSpawnChance) {
         this.food.push(
           new Food(
             this.random.next() * this.worldSize.width,
@@ -119,5 +178,6 @@ export class Simulation {
     }
 
     this.creatures = this.creatures.filter((creature) => creature.energy > 0);
+    this.creatures.push(...newborns);
   }
 }

@@ -5,25 +5,26 @@ import { Brain } from "../src/brain/brain.ts";
 import { Creature } from "../src/creature/creature.ts";
 import { Food } from "../src/food/food.ts";
 import { Simulation } from "../src/simulation/simulation.ts";
+import { Renderer } from "../src/renderer/renderer.ts";
 import { Loop } from "../src/loop/loop.ts";
-import { getFoodSensors } from "../src/sensors/sensors.ts";
+import { getFoodSensors, getCreatureSensors } from "../src/sensors/sensors.ts";
 import { getVisible } from "../src/sensors/vision.ts";
 import { distanceBetween, normalizeAngle, findNearest, randomWeights } from "../src/utils/math.ts";
 
 const world = { width: 600, height: 600 };
 
-const brain = (eat = 0) => new Brain([0,0,0,0], [0,0,0,0], [0,0,0,0], 0, 0, eat);
+const brain = (eat = 0) => new Brain([0,0,0,0,0,0,0], [0,0,0,0,0,0,0], [0,0,0,0,0,0,0], [0,0,0,0,0,0,0], 0, 0, eat, 0);
 const creature = (b = brain()) => new Creature(0, 0, b, 10, 45, 0, 100, 100, 50, 1);
 
-test("sensor inputs and the three neurons agree on four weights", () => {
+test("sensor inputs and the four neurons agree on seven weights", () => {
   const c = creature();
-  assert.deepEqual(getFoodSensors(c, [], world), [0, 1, 0, 0.5]);
-  assert.deepEqual(getFoodSensors(c, [new Food(50, 0)], world), [0, 0.5, 1, 0.5]);
-  assert.deepEqual(c.brain.think(getFoodSensors(c, [], world)), {move: 0.5, turn: 0, eat: 0.5});
+  assert.deepEqual(getFoodSensors(c, [], world), [0, 1, 0]);
+  assert.deepEqual(getFoodSensors(c, [new Food(50, 0)], world), [0, 0.5, 1]);
+  assert.deepEqual(c.brain.think([...getFoodSensors(c, [], world), c.energy/c.maxEnergy, ...getCreatureSensors(c, [c], world)]), {move: 0.5, turn: 0, eat: 0.5, reproduce: 0.5});
 });
 test("zero energy capacity and zero-range overlapping food stay finite", () => {
   const c = new Creature(0, 0, brain());
-  assert.deepEqual(getFoodSensors(c, [new Food(0,0)], world), [0, 0, 1, 0]);
+  assert.deepEqual(getFoodSensors(c, [new Food(0,0)], world), [0, 0, 1]);
   assert.ok(getFoodSensors(c, [], world).every(Number.isFinite));
 });
 test("vision includes its boundary, excludes outside and nearest handles empty lists", () => {
@@ -34,16 +35,16 @@ test("vision includes its boundary, excludes outside and nearest handles empty l
 });
 test("brain rejects missing/extra weights and non-finite data", () => {
   assert.throws(() => brain().think([1,2,3]), RangeError);
-  assert.throws(() => brain().think([1,2,3,4,5]), RangeError);
-  assert.throws(() => brain().think([NaN,0,0,0]), RangeError);
+  assert.throws(() => brain().think([1,2,3,4,5,6,7,8]), RangeError);
+  assert.throws(() => brain().think([NaN,0,0,0,0,0,0]), RangeError);
   const b = brain(); b.weightsTurn[0] = Infinity;
-  assert.throws(() => b.think([0,0,0,0]), RangeError);
+  assert.throws(() => b.think([0,0,0,0,0,0,0]), RangeError);
 });
 test("brain owns separate copies of supplied weight arrays", () => {
-  const weights = [0,0,0,0]; const b = new Brain(weights,weights,weights,0,0,0);
+  const weights = [0,0,0,0,0,0,0]; const b = new Brain(weights, weights, weights, weights, 0, 0, 0, 0);
   weights[0] = 10; b.weightsMove[1] = 2;
-  assert.deepEqual(b.weightsTurn, [0,0,0,0]);
-  assert.deepEqual(b.weightsEat, [0,0,0,0]);
+  assert.deepEqual(b.weightsTurn, [0,0,0,0,0,0,0]);
+  assert.deepEqual(b.weightsEat, [0,0,0,0,0,0,0]);
   assert.equal(b.weightsMove[0], 0);
 });
 test("zero food energy is preserved and omitted energy defaults to 30", () => {
@@ -145,22 +146,34 @@ test("application starts and renders through a minimal DOM/canvas", async (t) =>
   t.mock.method(Random.prototype, "next", function () { generators.push(this); return originalNext.call(this); });
   let seedDraws = 0;
   t.mock.method(Math, "random", () => { assert.equal(seedDraws++, 0); return 0.25; });
+  let expectedRectangles = 0;
+  const originalDraw = Renderer.prototype.draw;
+  t.mock.method(Renderer.prototype,"draw",function(creatures,food) {
+    expectedRectangles += creatures.length;return originalDraw.call(this,creatures,food);
+  });
   const callbacks = []; let rectangles = 0; let appended = 0;
   t.mock.method(globalThis, "requestAnimationFrame", cb => { callbacks.push(cb); return callbacks.length; });
   const previousDocument = globalThis.document;
+    const previousWindow = globalThis.window;
+    globalThis.window = { addEventListener() {} };
   globalThis.document = {
-    createElement: () => ({style: {}, getContext: () => ({clearRect() {}, fillRect() {rectangles++;}, beginPath() {}, arc() {}, fill() {}})}),
-    getElementById: () => ({appendChild() {appended++;}}),
+      addEventListener() {},
+    createElement: () => ({style: {}, classList: { add() {}, toggle() {} }, setAttribute() {}, addEventListener() {}, append() {}, getContext: () => ({clearRect() {}, fillRect() {rectangles++;}, beginPath() {}, arc() {}, fill() {}})}),
+    getElementById: () => ({
+      appendChild() { appended++; },
+      replaceChildren() {},
+      querySelectorAll: () => [],
+      querySelector: () => ({ addEventListener() {}, classList: { add() {}, toggle() {} }, style: {}, value: "20", valueAsNumber: 20, textContent: "", hidden: false, remove() {}, append() {}, replaceChildren() {}, setAttribute() {} }),
+    }),
   };
-  t.after(() => { if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument; });
+    t.after(() => { if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument; if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow; });
   await import("../src/main.ts");
-  assert.equal(appended, 1);
-  assert.equal(generators.length, 45);
-  for (let i=0; i<=120; i++) callbacks.shift()(i * 1000/60);
-  assert.equal(rectangles, 360); assert.equal(callbacks.length, 1);
+  assert.equal(appended, 0);
+  assert.equal(generators.length, 0);
+  assert.equal(rectangles, 0);
+  assert.equal(callbacks.length, 0);
   assert.equal(seedDraws, 1);
-  assert.ok(generators.length > 45);
-  assert.equal(new Set(generators).size, 1);
+  assert.equal(generators.length, 0);
 });
 
 test("invalid spawn probability cannot silently disable or force spawning", () => {

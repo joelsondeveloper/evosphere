@@ -8,8 +8,7 @@ import { Food } from "../src/food/food.ts";
 import { Simulation } from "../src/simulation/simulation.ts";
 
 const modulus = 2147483647;
-const makeBrain = rng => new Brain(randomWeights(4,rng), randomWeights(4,rng), randomWeights(4,rng),
-  randomWeight(rng), randomWeight(rng), randomWeight(rng));
+const makeBrain = rng => new Brain(randomWeights(7,rng), randomWeights(7,rng), randomWeights(7,rng), randomWeights(7,rng), randomWeight(rng), randomWeight(rng), randomWeight(rng), randomWeight(rng));
 const snapshot = simulation => structuredClone(simulation);
 function assertFinite(value) {
   if (typeof value === "number") assert.ok(Number.isFinite(value));
@@ -95,7 +94,7 @@ test("multiple brains reproduce exactly with independent arrays and successive d
   const second = Array.from({length:20},() => makeBrain(b));
   assertIndependent(first,second); assert.deepEqual(first,second);
   assert.notDeepEqual(first[0],first[1]);
-  for (let i=0;i<first.length;i++) assert.deepEqual(first[i].think([0.2,0.5,1,0.9]),second[i].think([0.2,0.5,1,0.9]));
+  for (let i=0;i<first.length;i++) assert.deepEqual(first[i].think([0.2,0.5,1,0.9,0,1,0]),second[i].think([0.2,0.5,1,0.9,0,1,0]));
   first[0].weightsMove[0] += 1;
   assert.notDeepEqual(first[0],second[0]);
 });
@@ -114,7 +113,7 @@ for (const ticks of [600,12000]) {
       assert.deepEqual(state,snapshot(b),`divergence at tick ${i+1}`);
     }
     assert.notDeepEqual(snapshot(a),initial);
-    assert.equal(a.creatures.length,3); // The long run must not collapse into an empty-world comparison.
+    assert.ok(a.creatures.length >= 3); // The long run must not collapse into an empty-world comparison.
     assertIndependent(a,b); assert.equal(a.random.next(),b.random.next());
   });
 }
@@ -151,7 +150,7 @@ test("food spawn event ticks and coordinates match an independent integer oracle
 
 test("spawning continues the RNG after brain creation rather than resetting it", () => {
   const random = new Random(12345); const oracle = new Random(12345);
-  makeBrain(random); for(let i=0;i<15;i++) oracle.next();
+  makeBrain(random); for(let i=0;i<32;i++) oracle.next();
   const s = new Simulation({width:600,height:400},random,[],1);
   assert.equal(s.random,random); oracle.next();
   const expected = new Food(oracle.next()*600,oracle.next()*400);
@@ -172,7 +171,7 @@ test("spawn consumes one draw per attempt and two more only on success", (t) => 
 test("determinism includes toroidal eating, energy and death removal", () => {
   const create = () => {
     const random = new Random(17);
-    const eater = new Creature(595,300,new Brain([0,0,0,0],[0,0,0,0],[0,0,0,0],0,0,1),0,0,0,20,100,50,1);
+    const eater = new Creature(595,300,new Brain([0,0,0,0,0,0,0], [0,0,0,0,0,0,0], [0,0,0,0,0,0,0], [0,0,0,0,0,0,0], 0, 0, 1, 0),0,0,0,20,100,50,1);
     const dying = new Creature(200,200,makeBrain(random),0,0,0,20,100,0.001,1);
     const s = new Simulation({width:600,height:600},random,[eater,dying],0.4);
     s.food = [new Food(5,300)]; return s;
