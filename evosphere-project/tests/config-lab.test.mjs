@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Random } from "../src/utils/random.ts";
-import { createInitialPopulation } from "../src/population/createInitialPopulation.ts";
+import { createInitialPopulation, createFounderPopulations } from "../src/population/createInitialPopulation.ts";
 import { validateConfiguration } from "../src/app/configuration.ts";
 import { Loop } from "../src/loop/loop.ts";
 
@@ -9,8 +9,8 @@ const world = { width: 600, height: 600 };
 const organism = { speed: 12, turnSpeed: 33, visionRange: 44, maxEnergy: 80, initialEnergy: 60, metabolism: 0.5, mutationRate: 0.2, mutationStrength: 0.7 };
 
 test("manual seed and invalid seed boundaries are validated", () => {
-  validateConfiguration({ amount: 1, seed: 2147483646, organism });
-  for (const seed of [0, -1, 2147483647, 1.5, NaN, Infinity]) assert.throws(() => validateConfiguration({ amount: 1, seed, organism }), RangeError);
+  validateConfiguration({ founders: [{ amount: 1, configuration: organism }], seed: 2147483646 });
+  for (const seed of [0, -1, 2147483647, 1.5, NaN, Infinity]) assert.throws(() => validateConfiguration({ founders: [{ amount: 1, configuration: organism }], seed }), RangeError);
 });
 
 test("Config Lab values reach founder creatures and brains", () => {
@@ -25,6 +25,17 @@ test("same seed and Config Lab produce equivalent independent founders", () => {
   const a = createInitialPopulation(6, world, new Random(777), organism);
   const b = createInitialPopulation(6, world, new Random(777), organism);
   assert.deepEqual(a, b); assert.notEqual(a[0], b[0]); assert.notEqual(a[0].brain, b[0].brain);
+});
+
+test("multiple founder populations preserve order, counts and independent configurations", () => {
+  const first = { ...organism, speed: 3 };
+  const second = { ...organism, speed: 9, mutationRate: 0 };
+  const founders = [{ amount: 2, configuration: first }, { amount: 3, configuration: second }];
+  const population = createFounderPopulations(founders, world, new Random(12));
+  assert.equal(population.length, 5);
+  assert.deepEqual(population.slice(0, 2).map(c => c.speed), [3, 3]);
+  assert.deepEqual(population.slice(2).map(c => c.speed), [9, 9, 9]);
+  assert.deepEqual(population.slice(2).map(c => c.brain.mutationRate), [0, 0, 0]);
 });
 
 test("changing a Config Lab object after creation does not rewrite existing founders", () => {

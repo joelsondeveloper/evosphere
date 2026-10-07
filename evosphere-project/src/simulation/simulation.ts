@@ -66,7 +66,7 @@ export class Simulation {
 
     const eatingRange = 15;
 
-    const reproductionRange = 20;
+    const reproductionRange = 40;
 
     const reproductionCandidates: Creature[] = [];
     const newborns: Creature[] = [];

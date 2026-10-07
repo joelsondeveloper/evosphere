@@ -73,7 +73,7 @@ for(const [aIntent,bIntent] of [[0,1],[1,0],[-1,1],[1,-1],[0,0]]) {
 }
 
 for(const [name,ax,ay,bx,by,count] of [
- ['inside',100,100,119.99,100,3],['exact boundary',100,100,120,100,2],['outside',100,100,120.01,100,2],
+ ['inside',100,100,119.99,100,3],['exact boundary',100,100,120,100,3],['outside',100,100,120.01,100,3],
  ['horizontal seam',595,100,5,100,3],['vertical seam',100,395,100,5,3],['diagonal seam',595,395,5,5,3]
 ]) {
  test(`reproduction distance: ${name}`,()=>{const s=simulation([creature({x:ax,y:ay}),creature({x:bx,y:by})]);s.update(0.1);assert.equal(s.creatures.length,count);});

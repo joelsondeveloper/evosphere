@@ -14,17 +14,31 @@ export interface OrganismConfiguration {
   mutationRate: number;
   mutationStrength: number;
 }
-export const DEFAULT_ORGANISM_CONFIGURATION: Readonly<OrganismConfiguration> = Object.freeze({
-  speed: DEFAULT_CREATURE_SPEED, turnSpeed: 90, visionRange: 120,
-  maxEnergy: 100, initialEnergy: 100, metabolism: 1,
-  mutationRate: 0.05, mutationStrength: 0.1,
-});
+
+export interface FounderPopulation {
+  amount: number;
+  configuration: OrganismConfiguration;
+}
+
+export const DEFAULT_ORGANISM_CONFIGURATION: Readonly<OrganismConfiguration> =
+  Object.freeze({
+    speed: DEFAULT_CREATURE_SPEED,
+    turnSpeed: 90,
+    visionRange: 120,
+    maxEnergy: 100,
+    initialEnergy: 100,
+    metabolism: 1,
+    mutationRate: 0.05,
+    mutationStrength: 0.1,
+  });
 
 export function createInitialPopulation(
   amount: number,
   worldSize: WorldSize,
   random: Random,
-  configuration: OrganismConfiguration | number = DEFAULT_ORGANISM_CONFIGURATION,
+  configuration:
+    | OrganismConfiguration
+    | number = DEFAULT_ORGANISM_CONFIGURATION,
 ): Creature[] {
   const creatures: Creature[] = [];
   if (!Number.isSafeInteger(amount) || amount < 0) {
@@ -38,13 +52,21 @@ export function createInitialPopulation(
   ) {
     throw new RangeError("World dimensions must be finite and positive");
   }
-  const organism = typeof configuration === "number"
-    ? { ...DEFAULT_ORGANISM_CONFIGURATION, speed: configuration }
-    : configuration;
-  for (const value of Object.values(organism)) if (!Number.isFinite(value) || value < 0) {
-    throw new RangeError("Organism configuration must be finite and non-negative");
-  }
-  if (organism.maxEnergy <= 0 || organism.initialEnergy > organism.maxEnergy || organism.mutationRate > 1) {
+  const organism =
+    typeof configuration === "number"
+      ? { ...DEFAULT_ORGANISM_CONFIGURATION, speed: configuration }
+      : configuration;
+  for (const value of Object.values(organism))
+    if (!Number.isFinite(value) || value < 0) {
+      throw new RangeError(
+        "Organism configuration must be finite and non-negative",
+      );
+    }
+  if (
+    organism.maxEnergy <= 0 ||
+    organism.initialEnergy > organism.maxEnergy ||
+    organism.mutationRate > 1
+  ) {
     throw new RangeError("Organism configuration contains invalid limits");
   }
   for (let i = 0; i < amount; i++) {
@@ -81,5 +103,13 @@ export function createInitialPopulation(
     );
   }
 
+  return creatures;
+}
+
+export function createFounderPopulations(founders: FounderPopulation[], worldSize: WorldSize, random: Random) {
+  const creatures: Creature[] = [];
+  for (const founder of founders) {
+    creatures.push(...createInitialPopulation(founder.amount, worldSize, random, founder.configuration));
+  }
   return creatures;
 }
